@@ -55,7 +55,7 @@ CrashOps.getInstance().disable();
 CrashOps.getInstance().enable();
 ```
 
-**Statically:** Add a [crashops_config.xml file](https://github.com/CrashOps/Android-SDK/blob/0.0.813/library/src/main/res/values/crashops_config.xml) to your 'values' folder and the SDK will read it in every app launch (using this approach may still be overridden by the dynamic approach). Do you wish to set different values for _debug_ / _release_ ? use [Android flavors](https://developer.android.com/studio/build/build-variants).
+**Statically:** Add a [crashops_config.xml file](https://github.com/CrashOps/Android-SDK/blob/0.0.820/library/src/main/res/values/crashops_config.xml) to your 'values' folder and the SDK will read it in every app launch (using this approach may still be overridden by the dynamic approach). Do you wish to set different values for _debug_ / _release_ ? use [Android flavors](https://developer.android.com/studio/build/build-variants).
 
 
 ## Acknowledgments
