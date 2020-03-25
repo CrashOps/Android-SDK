@@ -32,7 +32,7 @@ In your root-level "build.gradle" file, put:
 In your app-level "build.gradle" file, put:
 ```
    dependencies {
-        implementation 'com.github.crashops:android-sdk:0.0.820'
+        implementation 'com.github.crashops:android-sdk:0.0.821'
    }
 ```
 
