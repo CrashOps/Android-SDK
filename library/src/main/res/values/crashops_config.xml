@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!-- Use this XML resource file to configure the SDK's behaviour -->
+
+<resources>
+    <bool name="co_is_crashops_enabled">true</bool>
+    <string name="co_crashops_client_id">unknown</string>
+
+    <!-- recommended to allow it only in debug mode -->
+    <bool name="co_is_crashops_allowed_to_toast">false</bool>
+    <bool name="co_is_crashops_allowed_to_alert">false</bool>
+</resources>

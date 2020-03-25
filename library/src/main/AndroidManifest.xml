@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.crashops.sdk">
+
+    <!-- The SDK must have these permissions,
+        We may delete that but must tell CO customers that they must use this permission.
+        Otherwise their host app will crash (take for example Google Maps SDK) -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application>
+        <provider
+            android:name=".COInitContentProvider"
+            android:authorities="${applicationId}.com.crashops.sdk.provider"
+            android:exported="false" />
+
+        <!--suppress AndroidDomInspection -->
+        <provider
+            android:name="androidx.work.impl.WorkManagerInitializer"
+            android:exported="false"
+            android:enabled="false"/>
+        <!-- The 'androidx.work.impl.WorkManagerInitializer' fixes this: java.lang.IllegalStateException: WorkManager is already initialized.  Did you try to initialize it manually without disabling WorkManagerInitializer? See WorkManager#initialize(Context, Configuration) or the class level Javadoc for more information.-->
+        <!-- Read more here: https://medium.com/@programmerr47/custom-work-manager-initialization-efdd2afa6459-->
+    </application>
+
+</manifest>
