@@ -3,9 +3,12 @@
 
 This library will help you monitor your Android app's crashes.
 
-## Install via gradle
+## Installation
+### 🔌 & ▶️
 
-### Using the plain and common maven
+### Install via gradle
+
+#### Using the plain and common maven
 [![](https://img.shields.io/badge/jcenter-v0.0.820-green)](https://repo.dotcms.com/artifactory/simple/jcenter/com/crashops/sdk/crashops/)
 
 In your app-level "build.gradle" file, put:
@@ -16,7 +19,7 @@ In your app-level "build.gradle" file, put:
 ```
 
 
-### Using "jitpack.io"
+#### Using "jitpack.io"
 [![](https://jitpack.io/v/CrashOps/Android-SDK.svg)](https://jitpack.io/#CrashOps/Android-SDK)
 
 In your root-level "build.gradle" file, put:
