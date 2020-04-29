@@ -150,8 +150,9 @@ public class CrashOps {
 
     /**
      * Sets the client ID.
+     * This will allow CrashOps to upload error and crash logs to its servers.
      *
-     * @param clientId The client ID received by CrashOps customer services.
+     * @param clientId The client ID of this app, received by CrashOps.
      */
     public boolean setClientId(String clientId) {
         if (clientId == null) return false;
@@ -215,7 +216,7 @@ public class CrashOps {
      * <ol>
      *     <li>Use the Application instance as a listener.</li>
      *     <li>Call the `removeOnCrashListener` method when `Activity#onDestroy` is called, in case the listener is an Activity instance.</li>
-     * <ol/>
+     * </ol>
      *
      * @param previousLogsListener The listener that will be notified upon previous crash logs were detected.
      */
@@ -337,6 +338,8 @@ public class CrashOps {
         }
 
         public void logError(String title, Bundle errorDetails, StackTraceElement[] errorStackTrace) {
+            if (!CrashOpsController.sdkInstance.isCrashOpsEnabled) return;
+
             CrashOpsErrorHandler.getInstance().onError(title, errorDetails, errorStackTrace);
         }
     }

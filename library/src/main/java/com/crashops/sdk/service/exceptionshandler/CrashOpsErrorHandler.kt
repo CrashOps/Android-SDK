@@ -251,7 +251,6 @@ class LogGenerator {
                 }
             }
 
-
             extra?.let { moreInfo ->
                 moreInfo.keySet().forEach { key ->
                     (moreInfo.get(key) as? Bundle)?.let {
@@ -265,7 +264,8 @@ class LogGenerator {
             val now = time?.let { it } ?: Utils.now()
 
             val reportId = "${now}_${CrashOps.getInstance().sessionId}"
-            logJsonObject.put(Constants.Keys.Json.REPORT, JSONObject(Bundle().withString(Constants.Keys.Json.ID, reportId).withLong(Constants.Keys.Json.TIMESTAMP, now).toMap()))
+            logJsonObject.put(Constants.Keys.Json.ID, reportId)
+            logJsonObject.put(Constants.Keys.Json.TIMESTAMP, now)
             logJsonObject.put(Constants.Keys.Json.LOCAL_TIME, Strings.timestamp(now,"yyyy_MM_dd_HH_mm_ssZ"))
             throwable.message?.let {
                 logJsonObject.put(Constants.Keys.Json.CRASH_MESSAGE, it)
@@ -291,11 +291,11 @@ class LogGenerator {
                 }
 
                 if (currentThread == stackTraceEntry.key) {
-                    crashedString = "[crashed] "
+                    return@forEach
                 }
 
                 stackTraces.add(JSONObject()
-                        .put("stackTrace", JSONArray(stackTrace))
+                        .put("stackTrace", JSONArray(innerStackTrace))
                         .put("name", "${stackTraceEntry.key.name} $crashedString(${stackTraceEntry.key.id})")
                 )
                 crashedString = Strings.EMPTY
