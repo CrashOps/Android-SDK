@@ -220,7 +220,7 @@ class Repository {
     }
 
     fun storeCrashLog(log: String, time: Long? = null): String? {
-        val now = time?.let { it } ?: Utils.now()
+        val now = time ?: Utils.now()
         val sessionId = CrashOps.getInstance().sessionId
         val filename = "android_crashed_on_${Strings.timestamp(now, "yyyy_MM_dd_HH_mm_ssZ")}_$sessionId.log"
         var didSave = false

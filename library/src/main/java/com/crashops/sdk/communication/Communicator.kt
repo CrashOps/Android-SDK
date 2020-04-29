@@ -262,7 +262,7 @@ class Communicator {
                             SdkLogger.error(TAG, "We need to pay Firebase .... :P")
                         }
 
-                        var responseBody = if (!response.isSuccessful) {
+                        val responseBody = if (!response.isSuccessful) {
                             SdkLogger.error(TAG, response)
                             null
                         } else {

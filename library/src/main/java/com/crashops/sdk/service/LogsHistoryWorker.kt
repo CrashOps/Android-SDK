@@ -174,6 +174,10 @@ class LogsHistoryWorker(appContext: Context, workerParams: WorkerParameters) : L
                             Communicator.instance.reportViaUpload(Communicator.UploadTestServerUrl, zipped) { result ->
                                 SdkLogger.log(result)
                                 val logContent: String?
+
+                                // The zip file is no longer needed, whether the upload succeeded or not
+                                zipped.delete()
+
                                 if (result != null) {
                                     logContent = it.readText()
                                     try {
@@ -211,6 +215,10 @@ class LogsHistoryWorker(appContext: Context, workerParams: WorkerParameters) : L
                             Communicator.instance.reportViaUpload(Communicator.UploadTestServerUrl, zipped) { result ->
                                 SdkLogger.log(result)
                                 val logContent: String?
+
+                                // The zip file is no longer needed, whether the upload succeeded or not
+                                zipped.delete()
+
                                 if (result != null) {
                                     logContent = it.readText()
                                     try {
