@@ -9,12 +9,12 @@ This library will help you monitor your Android app's crashes.
 ### Install via gradle
 
 #### Using the plain and common maven
-[![](https://img.shields.io/badge/jcenter-v0.0.820-green)](https://repo.dotcms.com/artifactory/simple/jcenter/com/crashops/sdk/crashops/)
+[![](https://img.shields.io/badge/jcenter-v0.0.822-green)](https://repo.dotcms.com/artifactory/simple/jcenter/com/crashops/sdk/crashops/)
 
 In your app-level "build.gradle" file, put:
 ```
    dependencies {
-        implementation 'com.crashops.sdk:crashops:0.0.820'
+        implementation 'com.crashops.sdk:crashops:0.0.822'
    }
 ```
 
@@ -35,7 +35,7 @@ In your root-level "build.gradle" file, put:
 In your app-level "build.gradle" file, put:
 ```
    dependencies {
-        implementation 'com.github.crashops:android-sdk:0.0.821'
+        implementation 'com.github.crashops:android-sdk:0.0.822'
    }
 ```
 
