@@ -39,6 +39,27 @@ In your app-level "build.gradle" file, put:
    }
 ```
 
+## Usage
+
+### Client ID
+
+To recognize your app in CrashOps servers you need a client ID, you can set it via code (programmatically) either via config file.
+
+#### Set client ID via code
+```Kotlin
+// Kotlin
+CrashOps.getInstance().setClientId("app's-client-ID-received-from-CrashOps-support")
+```
+
+```Java
+// Java (pretty much like Kotlin 🙂)
+CrashOps.getInstance().setClientId("app's-client-ID-received-from-CrashOps-support");
+```
+
+#### Set client ID via config file
+
+Use the [crashops_config.xml file](https://github.com/CrashOps/Android-SDK/blob/0.0.820/library/src/main/res/values/crashops_config.xml) and place it in the [values](https://github.com/CrashOps/Flutter-Example/tree/aa93335d85cb3d70c10ba1dd0222f8ba3cf225ab/android/app/src/main/res/values) folder.
+
 
 ### How do I turn CrashOps off / on?
 By default, CrashOps is enabled and it runs automatically as your app runs  (plug n' play) but you always can control and enable / disable its behavior with two approaches: dynamically or statically.
