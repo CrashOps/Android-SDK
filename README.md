@@ -35,7 +35,7 @@ In your root-level "build.gradle" file, put:
 In your app-level "build.gradle" file, put:
 ```
    dependencies {
-        implementation 'com.github.CrashOps:Android-SDK:v0.1.12'
+        implementation 'com.github.CrashOps:Android-SDK:0.1.12'
    }
 ```
 
