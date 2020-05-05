@@ -56,6 +56,7 @@ public class ConfigurationsProvider {
                 // Theoretically speaking, this should never happen....
                 result = defaultValue;
             }
+
             values.put(resId, result);
         }
 
@@ -225,7 +226,7 @@ public class ConfigurationsProvider {
                 fieldIdMap.put(id, field.getName());
             }
         } catch (final Exception e) {
-            SdkLogger.error(TAG, e.toString());
+            SdkLogger.error(TAG, "Failed to scan XML IDs and names", e);
         }
 
         return fieldIdMap;

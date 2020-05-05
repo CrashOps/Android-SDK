@@ -7,8 +7,6 @@ import android.net.Uri;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.crashops.sdk.CrashOps;
-
 /**
  * Created by perrchick on 18/10/2018.
  */
@@ -18,6 +16,7 @@ public class COInitContentProvider extends ContentProvider {
         // That's a very nice trick that lets the SDK to independently grab the application context.
         // The idea is taken from here: https://firebase.googleblog.com/2016/12/how-does-firebase-initialize-on-android.html
         CrashOps.setContext(getContext());
+
         return false;
     }
 

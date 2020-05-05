@@ -34,10 +34,6 @@ public class DeviceInfoFetcher {
 
   /** Constructs DeviceInfo. The {@code contentResolver} must not be null. */
 
-  static public Map<String, Object> getDeviceDetails() {
-    return getDeviceInfo();
-  }
-
   static public Map<String, Object> getDeviceInfo() {
     Map<String, Object> info = new HashMap<>();
     info.put("board", Build.BOARD);

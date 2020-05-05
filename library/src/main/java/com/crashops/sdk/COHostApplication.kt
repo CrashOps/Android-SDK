@@ -5,18 +5,22 @@ import android.app.Application
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.os.Handler
 import android.os.HandlerThread
 import androidx.work.Configuration
 import com.crashops.sdk.data.Repository
 import com.crashops.sdk.service.LogsHistoryWorker
 import com.crashops.sdk.util.AppLifecycleTracker
+import com.crashops.sdk.util.LifecycleListener
 import com.crashops.sdk.util.PrivateEventBus
 import com.crashops.sdk.util.SdkLogger
 
-class COHostApplication(base: Context?) : ContextWrapper(base), Configuration.Provider {
+class COHostApplication(base: Context?) : ContextWrapper(base), Configuration.Provider, LifecycleListener {
     companion object {
         private var _shared: COHostApplication? = null
+        private val TAG: String = COHostApplication::class.simpleName.toString()
+
         fun shared(): COHostApplication {
             return _shared!!
         }
@@ -32,28 +36,29 @@ class COHostApplication(base: Context?) : ContextWrapper(base), Configuration.Pr
                 synchronized(COHostApplication) {
                     if (_shared == null) {
                         _shared = COHostApplication(context.applicationContext)
-                        _shared?.init()
                     }
                 }
             }
         }
     }
 
-    private lateinit var applicationStateObserver: PrivateEventBus.Receiver
-    private val activitiesTracker: AppLifecycleTracker = AppLifecycleTracker()
-    private val TAG: String = COHostApplication::class.simpleName.toString()
-    private lateinit var appBackgroundHandler: Handler
-    private lateinit var mainThreadHandler: Handler
-    val isReleaseVersion: Boolean = !BuildConfig.DEBUG
+    private val appBackgroundHandler: Handler
+    private val mainThreadHandler: Handler
+    private val applicationStateObserver: PrivateEventBus.Receiver
+    private val activitiesTracker: AppLifecycleTracker by lazy {
+        AppLifecycleTracker(this)
+    }
+    internal val isHostAppDebuggable: Boolean
+    var activitiesListener: LifecycleListener? = null
 
-    private fun init() {
+    init {
         val appBackgroundThread = HandlerThread(COHostApplication::class.java.simpleName + "_BackgroundThread")
         appBackgroundThread.start()
         appBackgroundHandler = Handler(appBackgroundThread.looper)
 
         mainThreadHandler = Handler()
 
-        applicationStateObserver = PrivateEventBus.createNewReceiver(object : PrivateEventBus.BroadcastReceiverListener {
+        applicationStateObserver = PrivateEventBus.createNewReceiver(applicationContext, object : PrivateEventBus.BroadcastReceiverListener {
             override fun onBroadcastReceived(intent: Intent, receiver: PrivateEventBus.Receiver) {
                 if (intent.action == PrivateEventBus.Action.APPLICATION_GOING_FOREGROUND) {
                     onApplicationForeground()
@@ -65,7 +70,10 @@ class COHostApplication(base: Context?) : ContextWrapper(base), Configuration.Pr
         }, PrivateEventBus.Action.APPLICATION_GOING_BACKGROUND, PrivateEventBus.Action.APPLICATION_GOING_FOREGROUND)
 
         // From: https://stackoverflow.com/questions/4414171/how-to-detect-when-an-android-app-goes-to-the-background-and-come-back-to-the-fo
-        (baseContext as? Application)?.registerActivityLifecycleCallbacks(activitiesTracker)
+        (applicationContext as? Application)?.registerActivityLifecycleCallbacks(activitiesTracker)
+
+        // Cool: https://stackoverflow.com/a/23844693/2735029 (because the library has no other option to see its host app configuration)
+        this.isHostAppDebuggable = 0 != applicationContext.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE
     }
 
     private fun onApplicationBackground() {
@@ -148,4 +156,11 @@ class COHostApplication(base: Context?) : ContextWrapper(base), Configuration.Pr
         return Configuration.Builder().build()
     }
     //endregion
+
+    //region LifecycleListener
+    override fun onActivityResumed(activity: Activity) {
+        activitiesListener?.onActivityResumed(activity)
+    }
+    //endregion
+
 }

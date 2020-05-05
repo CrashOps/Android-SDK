@@ -16,13 +16,13 @@ import okhttp3.*
 
 class Communicator {
 
-    private var _clientId: String? = null
-    private val clientId: String?
+    private var _appKey: String? = null
+    private val appKey: String?
         get() {
-            if (_clientId != null) return _clientId
+            if (_appKey != null) return _appKey
 
-            _clientId = Repository.instance.loadCustomValue(Constants.Keys.ClientId)
-            return _clientId
+            _appKey = Repository.instance.loadCustomValue(Constants.Keys.AppKey)
+            return _appKey
         }
 
     private val callbacks: HashMap<Int, Utils.Callback<Any?>> = hashMapOf()
@@ -34,15 +34,9 @@ class Communicator {
         private val TAG: String = Communicator::class.java.simpleName
 
         /**
-         * Use this URL to test logs, it will save the logs in Firebase.
+         * Server's endpoint that will receive all logs.
          */
-        const val CrashesTestServerUrl = "https://us-central1-crash-logs.cloudfunctions.net/storeCrashReport"
-        const val ErrorsTestServerUrl = "https://us-central1-crash-logs.cloudfunctions.net/storeErrorReport"
-
-        /**
-         * Uploads anything we want
-         */
-        const val UploadTestServerUrl = "https://us-central1-crash-logs.cloudfunctions.net/uploadLog"
+        const val LogsServerUrl = "https://crashops.com/api/reports"
 
         private val client: OkHttpClient by lazy {
             OkHttpClient.Builder().connectTimeout(30, TimeUnit.SECONDS).build()
@@ -61,7 +55,7 @@ class Communicator {
         }
     }
 
-    // Try this later: https://github.com/gildor/kotlin-coroutines-okhttp
+    //TODO Try this later: https://github.com/gildor/kotlin-coroutines-okhttp
     private fun apiCall(request: Request, callerKey: Any, callback: Utils.Callback<Any?>) {
         val callerKeyHashCode = storeCallback(callerKey, callback) ?: return
 
@@ -74,7 +68,7 @@ class Communicator {
 //                    }
 
                         if (e is SocketTimeoutException) {
-                            Utils.toast("Check your internet connection...")
+                            Utils.debugToast("Check your internet connection...")
                         }
 
                         callback.onCallback(null)
@@ -87,11 +81,7 @@ class Communicator {
 //                        it.onCallback(response.body()?.string())
 //                    }
 
-                        if (response.code() == 429) {
-                            SdkLogger.error(TAG, "We need to pay Firebase .... :P")
-                        }
-
-                        var responseBody = if (!response.isSuccessful) {
+                        val responseBody = if (!response.isSuccessful) {
                             SdkLogger.error(TAG, response)
                             null
                         } else {
@@ -101,6 +91,7 @@ class Communicator {
                         if (responseBody == null) {
                             //response?.message()?.contains("not found")
                             response.body()?.string()?.let { responseBodyString ->
+                                SdkLogger.error(TAG, responseBodyString)
                                 val message: String = try {
                                     var m = JSONObject(responseBodyString).optString("message", Strings.EMPTY)
                                     if (m.isEmpty()) {
@@ -128,12 +119,12 @@ class Communicator {
     }
 
     private fun apiCall(url: String, jsonString: String? = null, callerKey: Any, callback: Utils.Callback<Any?>) {
-        val crashOpsClientId = clientId ?: run {
+        val crashOpsAppKey = appKey ?: run {
             callback.onCallback(null)
             return
         }
 
-        if (crashOpsClientId.isEmpty()) {
+        if (crashOpsAppKey.isEmpty()) {
             callback.onCallback(null)
             return
         }
@@ -153,7 +144,7 @@ class Communicator {
         jsonString?.let {
             _request =
                     Request.Builder()
-                            .addHeader("crashops-client-id", crashOpsClientId)
+                            .addHeader("crashops-application-key", crashOpsAppKey)
                             .post(RequestBody.create(
                                     MediaType.parse("application/json; charset=utf-8"),
                                     jsonString))
@@ -162,7 +153,7 @@ class Communicator {
         } ?: run {
             _request =
                     Request.Builder()
-                            .addHeader("crashops-client-id", crashOpsClientId)
+                            .addHeader("crashops-application-key", crashOpsAppKey)
                             .get()
                             .url(url)
                             .build()
@@ -203,97 +194,11 @@ class Communicator {
     }
 
     @Throws(IOException::class)
-    fun reportViaRequest(url: String, file: File, callback: (Any?) -> Unit) {
-        apiCall(url, file.readText(), this, object : Utils.Callback<Any?> {
+    fun report(file: File, callback: (Any?) -> Unit) {
+        apiCall(LogsServerUrl, file.readText(), this, object : Utils.Callback<Any?> {
             override fun onCallback(result: Any?) {
                 callback.invoke(result)
             }
         })
-    }
-
-
-    @Throws(IOException::class)
-    fun reportViaUpload(url: String, file: File, callback: (Any?) -> Unit) {
-        val crashOpsClientId = clientId ?: run {
-            callback.invoke(null)
-            return
-        }
-
-        val mediaType = if (file.name.endsWith("zip")) {
-            MediaType.parse("application/zip")
-        } else {
-            // https://www.sitepoint.com/mime-types-complete-list/
-            MediaType.parse("text/plain")
-        }
-
-        val requestBody: RequestBody = MultipartBody.Builder()
-                .setType(MultipartBody.FORM)
-                .addFormDataPart("logFile", file.name, RequestBody.create(mediaType, file))
-                .build()
-        val request: Request = Request.Builder()
-                .url(url)
-                .header("crashops-client-id", crashOpsClientId)
-                .header("Content-Type", "multipart/form-data")
-                .post(requestBody).build()
-
-
-        client.newCall(request)
-                .enqueue(object : Callback {
-                    override fun onFailure(call: Call, e: IOException) {
-                        SdkLogger.error(TAG, e)
-//                    instance.callbacks[callerKeyHashCode]?.forEach {
-//                        it.onCallback(null)
-//                    }
-
-                        if (e is SocketTimeoutException) {
-                            Utils.toast("Check your internet connection...")
-                        }
-
-                        callback.invoke(null)
-                    }
-
-                    override fun onResponse(call: Call, response: Response) {
-                        SdkLogger.log(TAG, response)
-//                    instance.callbacks[callerKeyHashCode]?.forEach {
-//                        it.onCallback(response.body()?.string())
-//                    }
-
-                        if (response.code() == 429) {
-                            SdkLogger.error(TAG, "We need to pay Firebase .... :P")
-                        }
-
-                        val responseBody = if (!response.isSuccessful) {
-                            SdkLogger.error(TAG, response)
-                            null
-                        } else {
-                            response.body()?.string()
-                        }
-
-                        if (responseBody == null) {
-                            //response?.message()?.contains("not found")
-                            response.body()?.string()?.let { responseBodyString ->
-                                val message: String = try {
-                                    var m = JSONObject(responseBodyString).optString("message", Strings.EMPTY)
-                                    if (m.isEmpty()) {
-                                        m = responseBodyString
-                                    }
-
-                                    m
-                                } catch (e: Exception) {
-                                    "<parsing failed>"
-                                }
-
-                                SdkLogger.error(TAG, message)
-//                                Repository.instance.deviceId()?.let { id ->
-//                                    if (message.contains(id) && message.contains("not found")) {
-//                                        responseBody = Responses.NOT_FOUND.name
-//                                    }
-//                                }
-                            }
-                        }
-
-                        callback.invoke(responseBody)
-                    }
-                })
     }
 }

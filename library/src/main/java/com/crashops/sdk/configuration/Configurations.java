@@ -1,9 +1,7 @@
 package com.crashops.sdk.configuration;
 
-import com.crashops.sdk.BuildConfig;
 import com.crashops.sdk.R;
 import com.crashops.sdk.util.Constants;
-import com.crashops.sdk.util.Utils;
 
 /**
  * Created by Perry on 08/03/2018.
@@ -13,25 +11,36 @@ import com.crashops.sdk.util.Utils;
  */
 public class Configurations {
 
-    private static final boolean _isAllowedToToast;
     private static final boolean isEnabled;
-    public static final String clientId;
+    private static final boolean isTracingScreens;
+    private static final boolean _isAllowedToToast;
     private static final boolean _isAllowedToAlert;
+    public static final String appKey;
 
     public static final long intervalMilliseconds = Constants.ONE_MINUTE_MILLISECONDS * 3;
 
     static {
         isEnabled = ConfigurationsProvider.getBoolean(R.bool.co_is_crashops_enabled);
 
+        isTracingScreens = ConfigurationsProvider.getBoolean(R.bool.co_is_using_screen_traces);
+
         _isAllowedToToast = isEnabled && ConfigurationsProvider.getBoolean(R.bool.co_is_crashops_allowed_to_toast);
         _isAllowedToAlert = isEnabled && ConfigurationsProvider.getBoolean(R.bool.co_is_crashops_allowed_to_alert);
 
-        String _clientId = ConfigurationsProvider.getString(R.string.co_crashops_client_id);
-        if (!_clientId.equalsIgnoreCase("unknown")) {
-            clientId = _clientId;
+        String _appKey = ConfigurationsProvider.getString(R.string.co_crashops_app_key);
+        if (!_appKey.equalsIgnoreCase("unknown")) {
+            appKey = _appKey;
         } else {
-            clientId = null;
+            appKey = null;
         }
+    }
+
+    public static boolean isEnabled() {
+        return isEnabled;
+    }
+
+    public static boolean isTracingScreens() {
+        return isTracingScreens;
     }
 
     public static boolean isAllowedToToast() {
@@ -42,7 +51,7 @@ public class Configurations {
         return _isAllowedToAlert && isEnabled();
     }
 
-    public static boolean isEnabled() {
-        return isEnabled;
+    public static boolean shouldExportWireframes() {
+        return isEnabled() && isTracingScreens();
     }
 }

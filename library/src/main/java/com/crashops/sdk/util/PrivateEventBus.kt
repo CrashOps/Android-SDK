@@ -27,7 +27,7 @@ class PrivateEventBus {
      * The receiver will live as long as the context lives. Therefore we will pass the application context in most of the times.
      * @param actions
      */
-    constructor(private val actions: Collection<String>) : BroadcastReceiver() {
+    constructor(context: Context?, private val actions: Collection<String>) : BroadcastReceiver() {
         private var receiverListener: BroadcastReceiverListener? = null
 
         init {
@@ -36,7 +36,7 @@ class PrivateEventBus {
                 for (actionToListen in actions) {
                     intentFilter.addAction(actionToListen)
                 }
-                LocalBroadcastManager.getInstance(COHostApplication.shared()).registerReceiver(this, intentFilter)
+                LocalBroadcastManager.getInstance(context ?: COHostApplication.shared()).registerReceiver(this, intentFilter)
             }
         }
 
@@ -49,10 +49,12 @@ class PrivateEventBus {
         }
 
         private fun receivedAction(intent: Intent?) {
-            if (receiverListener == null) {
+            receiverListener?.let {
+                if (intent != null && !TextUtils.isEmpty(intent.action)) {
+                    it.onBroadcastReceived(intent, this)
+                }
+            } ?: run {
                 SdkLogger.error(TAG, "onBroadcastReceived: Missing listener! Intent == " + intent!!)
-            } else if (intent != null && !TextUtils.isEmpty(intent.action)) {
-                receiverListener!!.onBroadcastReceived(intent, this)
             }
         }
 
@@ -75,10 +77,24 @@ class PrivateEventBus {
     companion object {
         private val TAG: String = PrivateEventBus::class.java.simpleName
 
-        fun createNewReceiver(listener: BroadcastReceiverListener, vararg actions: String): Receiver {
-            val receiver = Receiver(actions.asList())
+        fun createNewReceiver(context: Context? = null, listener: BroadcastReceiverListener, vararg actions: String): Receiver {
+            val receiver = Receiver(context, actions.asList())
             receiver.setListener(listener)
             return receiver
+        }
+
+        fun createDisposalReceiver(context: Context? = null, listener: BroadcastReceiverListener, vararg actions: String): Receiver {
+            val disposalReceiver = Receiver(context, actions.asList())
+            disposalReceiver.setListener(object : BroadcastReceiverListener {
+                override fun onBroadcastReceived(intent: Intent, receiver: Receiver) {
+                    listener.onBroadcastReceived(intent, receiver)
+                    SdkLogger.log(disposalReceiver)
+                    receiver.quit()
+                }
+
+            })
+
+            return disposalReceiver
         }
 
         @JvmOverloads
