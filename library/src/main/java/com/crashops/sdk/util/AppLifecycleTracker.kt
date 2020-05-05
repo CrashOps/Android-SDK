@@ -3,16 +3,18 @@ package com.crashops.sdk.util
 import android.app.Activity
 import android.app.Application
 import android.os.Bundle
+import com.crashops.sdk.COHostApplication
 import com.crashops.sdk.communication.Communicator
 import java.lang.ref.WeakReference
 
-class AppLifecycleTracker : Application.ActivityLifecycleCallbacks {
+class AppLifecycleTracker(private var lifecycleListener: LifecycleListener?) : Application.ActivityLifecycleCallbacks {
     private val TAG = AppLifecycleTracker::class.java.simpleName
     private var numStarted = 0
 
     private var topActivity: WeakReference<Activity>? = null
     private var isApplicationInForeground: Boolean = false
 
+    //region Application.ActivityLifecycleCallbacks
     override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
     }
 
@@ -28,6 +30,7 @@ class AppLifecycleTracker : Application.ActivityLifecycleCallbacks {
 
     override fun onActivityResumed(activity: Activity) {
         topActivity = WeakReference(activity)
+        lifecycleListener?.onActivityResumed(activity)
     }
 
     override fun onActivityPaused(activity: Activity) {
@@ -49,6 +52,7 @@ class AppLifecycleTracker : Application.ActivityLifecycleCallbacks {
     override fun onActivityDestroyed(activity: Activity) {
         Communicator.removeCallbacks(activity)
     }
+    //endregion
 
     fun topActivity(): Activity? {
         return if (isApplicationInForeground) {
@@ -62,4 +66,12 @@ class AppLifecycleTracker : Application.ActivityLifecycleCallbacks {
         return isApplicationInForeground
     }
 
+    fun removeListener() {
+        lifecycleListener = null
+    }
+
+}
+
+interface LifecycleListener {
+    fun onActivityResumed(activity: Activity)
 }

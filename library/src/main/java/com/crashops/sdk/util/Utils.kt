@@ -4,14 +4,15 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Context.CLIPBOARD_SERVICE
+import android.content.Intent
 import android.os.Build
 import android.os.Looper
 import android.provider.Settings
-import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import com.crashops.sdk.BuildConfig
 import com.crashops.sdk.COHostApplication
 import com.crashops.sdk.configuration.Configurations
+import com.crashops.sdk.ui.COToast
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
@@ -44,7 +45,7 @@ class Utils {
 
             val context = COHostApplication.shared()
             val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-            debugToast(pInfo.toString())
+            debugToast("Tests result - $pInfo")
         }
 
         fun percentage(ofValue: Int, fromValue: Int): Double {
@@ -81,13 +82,15 @@ class Utils {
         fun debugToast(toastMessage: String) {
             if (!Configurations.isAllowedToToast()) return
 
-            toast("[${Strings.SDK_NAME} DEBUG] $toastMessage")
+            if (COHostApplication.shared().isHostAppDebuggable) {
+                toast("[${Strings.SDK_NAME} DEBUG] $toastMessage")
+            }
         }
 
         fun toast(toastMessage: String) {
             COHostApplication.shared().topActivity()?.let {
                 if (isRunningOnMainThread()) {
-                    Toast.makeText(it, toastMessage, Toast.LENGTH_LONG).show()
+                    COToast.makeText(it, toastMessage, COToast.LENGTH_LONG).show()
                 } else {
                     it.runOnUiThread {
                         toast(toastMessage)
@@ -95,7 +98,13 @@ class Utils {
                 }
             } ?: run {
                 if (isDebugMode) {
-                    Toast.makeText(COHostApplication.shared(), toastMessage, Toast.LENGTH_LONG).show()
+                    // Make a disposal observer (one time receiver, after the first use it cancels itself), just for retrying the toast
+                    PrivateEventBus.createDisposalReceiver(null, object : PrivateEventBus.BroadcastReceiverListener {
+                        override fun onBroadcastReceived(intent: Intent, receiver: PrivateEventBus.Receiver) {
+                            // retrying... (should be successful)
+                            toast(toastMessage)
+                        }
+                    }, PrivateEventBus.Action.APPLICATION_GOING_FOREGROUND)
                 }
             }
         }

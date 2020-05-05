@@ -1,5 +1,6 @@
 package com.crashops.sdk;
 
+import android.app.Activity;
 import android.app.Application;
 import android.app.Dialog;
 import android.content.Context;
@@ -13,10 +14,12 @@ import androidx.annotation.NonNull;
 import com.crashops.sdk.configuration.Configurations;
 import com.crashops.sdk.configuration.ConfigurationsProvider;
 import com.crashops.sdk.data.Repository;
+import com.crashops.sdk.logic.ActivityTracer;
 import com.crashops.sdk.service.LogsHistoryWorker;
 import com.crashops.sdk.service.exceptionshandler.CrashOpsErrorHandler;
 import com.crashops.sdk.util.Constants;
 import com.crashops.sdk.util.DeviceInfoFetcher;
+import com.crashops.sdk.util.LifecycleListener;
 import com.crashops.sdk.util.Optionals;
 import com.crashops.sdk.util.SdkLogger;
 import com.crashops.sdk.util.Strings;
@@ -24,6 +27,7 @@ import com.crashops.sdk.util.Utils;
 
 import java.lang.ref.WeakReference;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Timer;
@@ -137,7 +141,7 @@ public class CrashOps {
     private boolean eraseHistory() {
         boolean didDelete = Repository.getInstance().clearAllHistory();
         if (!didDelete) {
-            SdkLogger.error(TAG, "Failed to delete history");
+            SdkLogger.internalError(TAG, "Failed to delete history");
         }
 
         return didDelete;
@@ -149,29 +153,27 @@ public class CrashOps {
     }
 
     /**
-     * Sets the client ID.
+     * Sets the application key.
      * This will allow CrashOps to upload error and crash logs to its servers.
      *
-     * @param clientId The client ID of this app, received by CrashOps.
+     * @param appKey The application key, received by CrashOps services.
      */
-    public boolean setClientId(String clientId) {
-        if (clientId == null) return false;
-        if (clientId.isEmpty()) return false;
-        if (clientId.length() > 100) return false;
+    public boolean setAppKey(String appKey) {
+        if (appKey == null) return false;
+        if (appKey.isEmpty()) return false;
+        if (appKey.length() > 100) return false;
 
-        boolean didSet = false;
-        String previousClientId = Repository.getInstance().loadCustomValue(Constants.Keys.ClientId, null);
-        if (previousClientId == null) {
-            didSet = Repository.getInstance().storeCustomValue(Constants.Keys.ClientId, clientId, true);
+        boolean didSet;
+        String previousAppKey = Repository.getInstance().loadCustomValue(Constants.Keys.AppKey, null);
+
+        if (appKey.equalsIgnoreCase(previousAppKey)) {
+            didSet = true;
         } else {
-            if (previousClientId.equalsIgnoreCase(clientId)) {
-                didSet = true;
-            }
-
-            clientId = previousClientId;
+            SdkLogger.error(TAG, "Application key was changed from '" + previousAppKey + "' to '" + appKey + "'");
+            didSet = Repository.getInstance().storeCustomValue(Constants.Keys.AppKey, appKey, true);
         }
 
-        Utils.debugToast("CrashOps client ID is: " + clientId);
+        Utils.debugToast("CrashOps app key is: " + appKey);
 
         return didSet;
     }
@@ -190,13 +192,12 @@ public class CrashOps {
      * Holds a strong reference to the listener.
      * Meaning that if the listener is an activity, for example, it might create a
      * memory leak in case the activity didn't make a proper cleanup and removed this reference.
-     *<br/><br/>
+     * <br/><br/>
      * Recommendations to avoid memory leaks:
      * <ol>
-     *     <li>Use the Application instance as a listener.</li>
-     *     <li>Call the `removeOnCrashListener` method when `Activity#onDestroy` is called, in case the listener is an Activity instance.</li>
+     * <li>Use the Application instance as a listener.</li>
+     * <li>Call the `removeOnCrashListener` method when `Activity#onDestroy` is called, in case the listener is an Activity instance.</li>
      * </ol>
-     *
      *
      * @param onCrashListener The listener that will be notified upon crash is detected.
      */
@@ -211,11 +212,11 @@ public class CrashOps {
      * Holds a strong reference to the listener.
      * Meaning that if the listener is an activity, for example, it might create a
      * memory leak in case the activity didn't make a proper cleanup and removed this reference.
-     *<br/><br/>
+     * <br/><br/>
      * Recommendations to avoid memory leaks:
      * <ol>
-     *     <li>Use the Application instance as a listener.</li>
-     *     <li>Call the `removeOnCrashListener` method when `Activity#onDestroy` is called, in case the listener is an Activity instance.</li>
+     * <li>Use the Application instance as a listener.</li>
+     * <li>Call the `removeOnCrashListener` method when `Activity#onDestroy` is called, in case the listener is an Activity instance.</li>
      * </ol>
      *
      * @param previousLogsListener The listener that will be notified upon previous crash logs were detected.
@@ -235,8 +236,11 @@ public class CrashOps {
         }
     }
 
-    private enum CrashOpsController { // I have found that using enum as singleton helps with memory management, the enum has unique characteristics when trying to create a stable singleton.
+    // Using enum for singleton implementation, because enum has unique characteristics when trying to create a stable singleton.
+    private enum CrashOpsController implements LifecycleListener {
         sdkInstance;
+
+        final private ActivityTracer activityTracer;
 
         private boolean isCrashOpsEnabled = true;
         private static final String CO_THREAD_TAG = "CrashOps_Thread";
@@ -259,28 +263,31 @@ public class CrashOps {
             bgThread.start();
             bgThreadHandler = new Handler(bgThread.getLooper());
             mainHandler = new Handler(); // The SDK Counts in that it will run on main thread
+            activityTracer = new ActivityTracer();
         }
 
         private void setContext(final Context context) {
             if (context == null) {
-                SdkLogger.error(TAG, "Someone.... tried to send a 'null context' to CrashOps SDK... hmmm....");
+                SdkLogger.error(TAG, "Someone tried to send a 'null context' to CrashOps SDK... hmmm....");
                 return;
             }
 
             if (contextHolder != null && contextHolder.get() != null) {
                 if (contextHolder.get().getApplicationContext() != context.getApplicationContext()) {
                     // TODO Investigate if it may even occur
-                    SdkLogger.error(TAG, "Someone.... was the app context change? That's simply cannot be...");
+                    SdkLogger.error(TAG, "Someone was the app context change? That's simply cannot be...");
                 }
             }
 
             synchronized (CrashOps.class) {
                 if (contextHolder == null || contextHolder.get() == null) {
                     // Discussion: https://stackoverflow.com/questions/28440368/how-to-get-application-from-context
-                    this.contextHolder = new WeakReference<>(context.getApplicationContext());
+                    Context appContext = context.getApplicationContext();
+                    this.contextHolder = new WeakReference<>(appContext);
 
-                    if (context.getApplicationContext() instanceof Application) {
-                        COHostApplication.setContext(context.getApplicationContext());
+                    if (appContext instanceof Application) {
+                        COHostApplication.setContext(appContext);
+                        COHostApplication.sharedInstance().setActivitiesListener(this);
                     } else {
                         // Hmmmm.... this should never happen
                         SdkLogger.error(TAG, "setContext: Failed to observe activity life cycles");
@@ -293,8 +300,12 @@ public class CrashOps {
                         }
                     });
 
-                    CrashOps.initiate();
+                    facade.initiate();
                 }
+            }
+
+            if (Configurations.shouldExportWireframes()) {
+                Repository.getInstance().setTracer(activityTracer);
             }
 
             if (Utils.isDebugMode()) {
@@ -342,15 +353,22 @@ public class CrashOps {
 
             CrashOpsErrorHandler.getInstance().onError(title, errorDetails, errorStackTrace);
         }
+
+        //region LifecycleListener
+        @Override
+        public void onActivityResumed(@NonNull Activity activity) {
+            activityTracer.addActivityToTrace(activity);
+        }
+        //endregion
     }
 
     public static void setContext(Context context) {
         CrashOpsController.sdkInstance.setContext(context);
     }
 
-    private static void initiate() {
-        if (CrashOps.getInstance().setClientId(Configurations.clientId)) {
-            Utils.debugToast("CrashOps client ID is: " + Configurations.clientId);
+    private void initiate() {
+        if (setAppKey(Configurations.appKey)) {
+            Utils.debugToast("CrashOps app key is: " + Configurations.appKey);
         }
 
         if (Configurations.isEnabled()) {
@@ -378,4 +396,16 @@ public class CrashOps {
     public static Context getApplicationContext() {
         return CrashOpsController.sdkInstance.getContext();
     }
+
+    /**
+     * Gets a copied list of the device info.
+     * @return A non-null map of host device's info.
+     */
+    @NonNull
+    public Map<String, Object> getDeviceInfo() {
+        HashMap<String, Object> copy = new HashMap<>();
+        copy.putAll(Optionals.safelyUnwrap(CrashOpsController.sdkInstance.deviceInfo, new HashMap<String, Object>()));
+        return copy;
+    }
+
 }

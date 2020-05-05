@@ -4,9 +4,11 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import com.crashops.sdk.COHostApplication
 import com.crashops.sdk.CrashOps
+import com.crashops.sdk.logic.ActivityTracer
 import com.crashops.sdk.util.Constants
 import com.crashops.sdk.util.SdkLogger
 import com.crashops.sdk.util.Strings
@@ -18,6 +20,7 @@ import java.io.IOException
 
 class Repository {
 
+    var tracer: ActivityTracer? = null
     internal val hostAppDetails = Bundle()
     private val filesHelper = FilesHelper()
 
@@ -37,7 +40,7 @@ class Repository {
                 null
             }
         } ?: run {
-            SdkLogger.error(TAG, "Couldn't get to device's cache folder")
+            SdkLogger.internalError(TAG, "Couldn't get to device's cache folder")
             null
         }
     }
@@ -58,7 +61,7 @@ class Repository {
                 null
             }
         } ?: run {
-            SdkLogger.error(TAG, "Couldn't get to device's cache folder")
+            SdkLogger.internalError(TAG, "Couldn't get to device's cache folder")
             null
         }
     }
@@ -79,7 +82,7 @@ class Repository {
                 null
             }
         } ?: run {
-            SdkLogger.error(TAG, "Couldn't get to device's cache folder")
+            SdkLogger.internalError(TAG, "Couldn't get to device's cache folder")
             null
         }
     }
@@ -107,10 +110,14 @@ class Repository {
             val info = COHostApplication.sharedInstance().packageManager.getPackageInfo(COHostApplication.sharedInstance().packageName, 0)
 
             hostAppDetails.putString(Constants.Keys.HOST_APP_VERSION_NAME, info.versionName)
-            hostAppDetails.putLong(Constants.Keys.HOST_APP_VERSION_CODE, info.longVersionCode)
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                hostAppDetails.putInt(Constants.Keys.HOST_APP_VERSION_CODE, info.versionCode)
+            } else {
+                hostAppDetails.putLong(Constants.Keys.HOST_APP_VERSION_CODE, info.longVersionCode)
+            }
             hostAppDetails.putString(Constants.Keys.HOST_APP_PACKAGE_NAME, info.packageName)
         } catch (e: PackageManager.NameNotFoundException) {
-            SdkLogger.error(TAG, "Failed to load host app's details!", e)
+            SdkLogger.internalError(TAG, e)
         }
     }
 
@@ -158,9 +165,9 @@ class Repository {
             outputStream.write(content.toByteArray())
             didWrite = true
         } catch (e: FileNotFoundException) {
-            SdkLogger.error(TAG, e)
+            SdkLogger.internalError(TAG, e)
         } catch (e: IOException) {
-            SdkLogger.error(TAG, e)
+            SdkLogger.internalError(TAG, e)
         }
 
         return didWrite
@@ -180,9 +187,9 @@ class Repository {
         try {
             content = file.readText(Charsets.UTF_8)
         } catch (e: FileNotFoundException) {
-            SdkLogger.error(TAG, e)
+            SdkLogger.internalError(TAG, e)
         } catch (e: IOException) {
-            SdkLogger.error(TAG, e)
+            SdkLogger.internalError(TAG, e)
         }
 
         return content
@@ -232,9 +239,9 @@ class Repository {
                 logFile.write(log.toByteArray())
                 didSave = true
             } catch (e: FileNotFoundException) {
-                SdkLogger.error(TAG, e)
+                SdkLogger.internalError(TAG, e)
             } catch (e: IOException) {
-                SdkLogger.error(TAG, e)
+                SdkLogger.internalError(TAG, e)
             }
         }
 
@@ -305,7 +312,7 @@ class Repository {
     fun loadErrorLogFiles(): ArrayList<File> {
         val filesList = ArrayList<File>()
         val logs = errorLogsFolder ?: run {
-            SdkLogger.error(TAG, "Couldn't get to device's cache folder")
+            SdkLogger.internalError(TAG, "Couldn't get to device's cache folder")
             null
         }
 

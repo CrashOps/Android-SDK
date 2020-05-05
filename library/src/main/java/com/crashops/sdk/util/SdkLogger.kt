@@ -44,12 +44,23 @@ class SdkLogger {
         }
 
         @JvmStatic
+        fun internalError(reporter: String, logMessage: Any?) {
+            if (Utils.isReleaseVersion) return
+            if (!Configurations.isEnabled()) return
+
+            logMessage?.let {
+                Log.e(reporter, it.toString())
+            }
+        }
+
+        @JvmStatic
         fun error(reporter: String, logMessage: Any?) {
             if (Utils.isReleaseVersion) return
             if (!Configurations.isEnabled()) return
 
             logMessage?.let {
                 Log.e(reporter, it.toString())
+                Utils.debugToast(it.toString())
             }
         }
 

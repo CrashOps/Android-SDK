@@ -1,26 +1,22 @@
 package com.crashops.sdk.service
 
-import android.app.job.JobParameters
 import android.content.Context
 import android.os.Handler
 import android.os.HandlerThread
 import androidx.annotation.Nullable
-import androidx.concurrent.futures.ResolvableFuture
+import androidx.concurrent.futures.CallbackToFutureAdapter
 import androidx.work.*
+import com.crashops.sdk.COHostApplication
 import com.crashops.sdk.communication.Communicator
 import com.crashops.sdk.configuration.Configurations
 import com.crashops.sdk.data.Repository
 import com.crashops.sdk.service.LogsHistoryWorker.Companion.TAG
+import com.crashops.sdk.util.*
 import com.google.common.util.concurrent.ListenableFuture
+import java.io.File
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
-import androidx.work.WorkManager
-import com.crashops.sdk.COHostApplication
-import com.crashops.sdk.PreviousLogsListener
-import com.crashops.sdk.util.*
-import java.io.File
-import java.util.*
-import kotlin.collections.ArrayList
+
 
 class LogsHistoryWorker(appContext: Context, workerParams: WorkerParameters) : ListenableWorker(appContext, workerParams) {
 
@@ -30,7 +26,7 @@ class LogsHistoryWorker(appContext: Context, workerParams: WorkerParameters) : L
         Handler(appBackgroundThread.looper)
     }
 
-    private var mFuture: ResolvableFuture<Result>? = null
+    private var mFuture: CallbackToFutureAdapter.Completer<Result>? = null
     private var bgTask: BackgroundRunnable? = null
 
     companion object {
@@ -169,30 +165,23 @@ class LogsHistoryWorker(appContext: Context, workerParams: WorkerParameters) : L
                     }
 
                     crashLogFiles.forEach {
-                        it.zipIt()?.let { zipped ->
-                            val holder = synchronizer.createHolder()
-                            Communicator.instance.reportViaUpload(Communicator.UploadTestServerUrl, zipped) { result ->
-                                SdkLogger.log(result)
-                                val logContent: String?
 
-                                // The zip file is no longer needed, whether the upload succeeded or not
-                                zipped.delete()
-
-                                if (result != null) {
-                                    logContent = it.readText()
-                                    try {
-                                        it.delete()
-                                    } catch (exception: java.lang.Exception) {
-                                        SdkLogger.error(TAG, exception)
-                                    }
-                                } else {
-                                    logContent = null
+                        val holder = synchronizer.createHolder()
+                        Communicator.instance.report(it) { result ->
+                            SdkLogger.log(result)
+                            val logContent: String?
+                            if (result != null) {
+                                logContent = it.readText()
+                                try {
+                                    it.delete()
+                                } catch (exception: java.lang.Exception) {
+                                    SdkLogger.error(TAG, exception)
                                 }
-
-                                holder.release(logContent)
+                            } else {
+                                logContent = null
                             }
-                        } ?: run {
-                            SdkLogger.error(TAG, "Failed to zip $it")
+
+                            holder.release(logContent)
                         }
                     }
                 }
@@ -210,30 +199,22 @@ class LogsHistoryWorker(appContext: Context, workerParams: WorkerParameters) : L
                     }
 
                     errorLogFiles.forEach {
-                        it.zipIt()?.let { zipped ->
-                            val holder = synchronizer.createHolder()
-                            Communicator.instance.reportViaUpload(Communicator.UploadTestServerUrl, zipped) { result ->
-                                SdkLogger.log(result)
-                                val logContent: String?
-
-                                // The zip file is no longer needed, whether the upload succeeded or not
-                                zipped.delete()
-
-                                if (result != null) {
-                                    logContent = it.readText()
-                                    try {
-                                        it.delete()
-                                    } catch (exception: java.lang.Exception) {
-                                        SdkLogger.error(TAG, exception)
-                                    }
-                                } else {
-                                    logContent = null
+                        val holder = synchronizer.createHolder()
+                        Communicator.instance.report(it) { result ->
+                            SdkLogger.log(result)
+                            val logContent: String?
+                            if (result != null) {
+                                logContent = it.readText()
+                                try {
+                                    it.delete()
+                                } catch (exception: java.lang.Exception) {
+                                    SdkLogger.error(TAG, exception)
                                 }
-
-                                holder.release(logContent)
+                            } else {
+                                logContent = null
                             }
-                        } ?: run {
-                            SdkLogger.error(TAG, "Failed to zip $it")
+
+                            holder.release(logContent)
                         }
                     }
                 }
@@ -254,19 +235,31 @@ class LogsHistoryWorker(appContext: Context, workerParams: WorkerParameters) : L
 
     // Invoked automatically by the OS
     override fun startWork(): ListenableFuture<Result> {
-        val future = ResolvableFuture.create<Result>()
-        mFuture = future
+        return CallbackToFutureAdapter.getFuture(CallbackToFutureAdapter.Resolver { completer: CallbackToFutureAdapter.Completer<Result>? ->
+            // Your method can call set() or setException() on the
+            // Completer to signal completion
 
-        bgTask = BackgroundRunnable(applicationContext, mFuture)
-        bgTask?.let {
-            sdkBackgroundHandler.post(it)
-        }
-        SdkLogger.log(TAG, "Called `startWork`...")
+            mFuture = completer
 
-        return future
+            bgTask = BackgroundRunnable(applicationContext, onResult = { resultString ->
+                resultString?.let {
+                    completer?.set(ListenableWorker.Result.success())
+                } ?: run {
+                    completer?.set(Result.retry())
+                }
+            })
+
+            SdkLogger.log(TAG, "Called `startWork`...")
+            bgTask?.let {
+                sdkBackgroundHandler.post(it)
+            }
+
+            NAME(applicationContext)
+        })
     }
 
-    fun onStopJob(params: JobParameters) {
+    override fun onStopped() {
+        super.onStopped()
         sdkBackgroundHandler.removeCallbacks(null)
         bgTask?.onResult?.invoke(null)
         mFuture?.setException(Exception("Stopped by OS"))
@@ -277,7 +270,7 @@ private fun File.zipIt(): File? {
     return Zipper.zipIt(this)
 }
 
-private class BackgroundRunnable(private val applicationContext: Context, @Nullable private val future: ResolvableFuture<ListenableWorker.Result>?, @Nullable val onResult: ((String?) -> Unit)? = null) : Runnable {
+private class BackgroundRunnable(private val applicationContext: Context, @Nullable val onResult: ((String?) -> Unit)? = null) : Runnable {
 
     companion object {
         private val _isWorking: AtomicBoolean = AtomicBoolean(false)
@@ -289,7 +282,7 @@ private class BackgroundRunnable(private val applicationContext: Context, @Nulla
 
         // Invoked manually by the app / widget (1)
         fun work(appContext: Context, onResult: ((String?) -> Unit)) {
-            BackgroundRunnable(appContext, null, onResult).runAsync()
+            BackgroundRunnable(appContext, onResult).runAsync()
         }
     }
 
@@ -354,8 +347,6 @@ private class BackgroundRunnable(private val applicationContext: Context, @Nulla
                         // Retry and see if there are leftovers...
                         executeUpload(true)
                     } else {
-                        future?.set(ListenableWorker.Result.success())
-
                         onResult?.invoke(result?.toString())
                         LogsHistoryWorker.setLastCallTimestamp(applicationContext, Utils.now())
                     }
@@ -363,9 +354,6 @@ private class BackgroundRunnable(private val applicationContext: Context, @Nulla
             })
         } else {
             SdkLogger.log(TAG, "Periodic worker fired but it will be ignored because the app is in foreground / service is disabled by the user...")
-
-            future?.set(ListenableWorker.Result.retry())
-
             onResult?.invoke(null)
             LogsHistoryWorker.setLastCallTimestamp(applicationContext, Utils.now())
         }
