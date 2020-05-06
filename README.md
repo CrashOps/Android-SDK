@@ -58,7 +58,7 @@ CrashOps.getInstance().setAppKey("app's-key-received-from-CrashOps-support");
 
 #### Set an application key via config file
 
-Use the [crashops_config.xml file](https://github.com/CrashOps/Android-SDK/blob/0.1.0/library/src/main/res/values/crashops_config.xml#L10) and place it in the [values](https://github.com/CrashOps/Flutter-Example/tree/aa93335d85cb3d70c10ba1dd0222f8ba3cf225ab/android/app/src/main/res/values) folder.
+Use the [crashops_config.xml file](https://github.com/CrashOps/Flutter-Example/blob/v0.1.11/android/app/src/main/res/values/crashops_config.xml) and place it in the [values](https://github.com/CrashOps/Flutter-Example/blob/v0.1.11/android/app/src/main/res/values) folder.
 
 
 ### How do I turn CrashOps off / on?
@@ -79,7 +79,7 @@ CrashOps.getInstance().disable();
 CrashOps.getInstance().enable();
 ```
 
-**Statically:** Add a [crashops_config.xml file](https://github.com/CrashOps/Android-SDK/blob/0.1.0/library/src/main/res/values/crashops_config.xml) to your 'values' folder and the SDK will read it in every app launch (using this approach may still be overridden by the dynamic approach). Do you wish to set different values for _debug_ / _release_ ? use [Android flavors](https://developer.android.com/studio/build/build-variants).
+**Statically:** Add a [crashops_config.xml file](https://github.com/CrashOps/Flutter-Example/blob/v0.1.11/android/app/src/main/res/values/crashops_config.xml) to your [values](https://github.com/CrashOps/Flutter-Example/blob/v0.1.11/android/app/src/main/res/values) folder and the SDK will read it in every app launch (using this approach may still be overridden by the dynamic approach). Do you wish to set different values for _debug_ / _release_ ? use [Android flavors](https://developer.android.com/studio/build/build-variants).
 
 
 ## Acknowledgments
