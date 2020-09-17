@@ -48,12 +48,12 @@ To recognize your app in CrashOps servers you need an application key, you can s
 #### Set an application key via code
 ```Kotlin
 // Kotlin
-CrashOps.getInstance().setAppKey("app's-key-received-from-CrashOps-support")
+CrashOps.getInstance().setAppKey("app's-key-received-from-CrashOps-console")
 ```
 
 ```Java
 // Java (pretty much like Kotlin 🙂)
-CrashOps.getInstance().setAppKey("app's-key-received-from-CrashOps-support");
+CrashOps.getInstance().setAppKey("app's-key-received-from-CrashOps-console");
 ```
 
 #### Set an application key via config file
