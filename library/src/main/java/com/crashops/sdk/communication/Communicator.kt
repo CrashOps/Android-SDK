@@ -25,7 +25,7 @@ class Communicator {
             return _appKey
         }
 
-    private val callbacks: HashMap<Int, Utils.Callback<Any?>> = hashMapOf()
+    private val callbacks: HashMap<Int, Utils.Callback<Pair<Int, String?>?>> = hashMapOf()
 
     companion object {
         @JvmStatic
@@ -56,7 +56,7 @@ class Communicator {
     }
 
     //TODO Try this later: https://github.com/gildor/kotlin-coroutines-okhttp
-    private fun apiCall(request: Request, callerKey: Any, callback: Utils.Callback<Any?>) {
+    private fun apiCall(request: Request, callerKey: Any, callback: Utils.Callback<Pair<Int, String?>?>) {
         val callerKeyHashCode = storeCallback(callerKey, callback) ?: return
 
         client.newCall(request)
@@ -81,7 +81,7 @@ class Communicator {
 //                        it.onCallback(response.body()?.string())
 //                    }
 
-                        val responseBody = if (!response.isSuccessful) {
+                        val responseBody: String? = if (!response.isSuccessful) {
                             SdkLogger.error(TAG, response)
                             null
                         } else {
@@ -112,13 +112,13 @@ class Communicator {
                             }
                         }
 
-                        callback.onCallback(responseBody)
+                        callback.onCallback(Pair(response.code(), responseBody))
                         removeCallbacks(callerKeyHashCode)
                     }
                 })
     }
 
-    private fun apiCall(url: String, jsonString: String? = null, callerKey: Any, callback: Utils.Callback<Any?>) {
+    private fun apiCall(url: String, jsonString: String? = null, callerKey: Any, callback: Utils.Callback<Pair<Int, String?>?>) {
         val crashOpsAppKey = appKey ?: run {
             callback.onCallback(null)
             return
@@ -169,7 +169,7 @@ class Communicator {
 
     private fun storeCallback(
             callerKey: Any,
-            callback: Utils.Callback<Any?>
+            callback: Utils.Callback<Pair<Int, String?>?>
     ): Int? {
         var isAlive = true
         if (callerKey is Activity) {
@@ -195,8 +195,8 @@ class Communicator {
 
     @Throws(IOException::class)
     fun report(file: File, callback: (Any?) -> Unit) {
-        apiCall(LogsServerUrl, file.readText(), this, object : Utils.Callback<Any?> {
-            override fun onCallback(result: Any?) {
+        apiCall(LogsServerUrl, file.readText(), this, object : Utils.Callback<Pair<Int, String?>?> {
+            override fun onCallback(result: Pair<Int, String?>?) {
                 callback.invoke(result)
             }
         })

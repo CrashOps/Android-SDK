@@ -63,7 +63,7 @@ public class DeviceInfoFetcher {
     info.put("isPhysicalDevice", !isEmulator());
     info.put("androidId", getAndroidId());
 
-    info.put("screenSize", screenHeight + "x" + screenWidth);
+    info.put("screenSize", screenWidth + "x" + screenHeight);
     info.put("carrier", getCarrierName());
 
     Reachability.NetworkStatus reachabilityStatus = Reachability.instance.getReachabilityStatus();

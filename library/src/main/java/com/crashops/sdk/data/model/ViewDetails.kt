@@ -18,9 +18,9 @@ class ViewDetails(v: View, val depth: Int) {
     val className = v.javaClass.simpleName
     val position = Position(v.x, v.y)
     val dimensions = Size(v.width, v.height)
-    val children: List<ViewDetails> = v.mapChildren {
-        ViewDetails(it, depth + 1)
-    }
+    val children: List<ViewDetails> = listOf() //v.mapChildren {
+        //ViewDetails(it, depth + 1)
+    //}
 
     val isLeaf: Boolean
         get() = this.children.isEmpty()

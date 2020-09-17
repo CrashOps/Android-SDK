@@ -10,23 +10,11 @@ import com.crashops.sdk.util.Constants;
  * The custom configurations will take effect only if when the attributes are accessed programmatically (in contrary when they are configured only via the XML layouts / animations / drawable).
  */
 public class Configurations {
-
-    private static final boolean isEnabled;
-    private static final boolean isTracingScreens;
-    private static final boolean _isAllowedToToast;
-    private static final boolean _isAllowedToAlert;
     public static final String appKey;
 
     public static final long intervalMilliseconds = Constants.ONE_MINUTE_MILLISECONDS * 3;
 
     static {
-        isEnabled = ConfigurationsProvider.getBoolean(R.bool.co_is_crashops_enabled);
-
-        isTracingScreens = ConfigurationsProvider.getBoolean(R.bool.co_is_using_screen_traces);
-
-        _isAllowedToToast = isEnabled && ConfigurationsProvider.getBoolean(R.bool.co_is_crashops_allowed_to_toast);
-        _isAllowedToAlert = isEnabled && ConfigurationsProvider.getBoolean(R.bool.co_is_crashops_allowed_to_alert);
-
         String _appKey = ConfigurationsProvider.getString(R.string.co_crashops_app_key);
         if (!_appKey.equalsIgnoreCase("unknown")) {
             appKey = _appKey;
@@ -36,19 +24,19 @@ public class Configurations {
     }
 
     public static boolean isEnabled() {
-        return isEnabled;
+        return ConfigurationsProvider.getBoolean(R.bool.co_is_crashops_enabled, true);
     }
 
-    public static boolean isTracingScreens() {
-        return isTracingScreens;
+    private static boolean isTracingScreens() {
+        return ConfigurationsProvider.getBoolean(R.bool.co_is_using_screen_traces, true);
     }
 
     public static boolean isAllowedToToast() {
-        return _isAllowedToToast && isEnabled();
+        return isEnabled() && ConfigurationsProvider.getBoolean(R.bool.co_is_crashops_allowed_to_toast, false);
     }
 
     public static boolean isAllowedToAlert() {
-        return _isAllowedToAlert && isEnabled();
+        return isEnabled() && ConfigurationsProvider.getBoolean(R.bool.co_is_crashops_allowed_to_alert, false);
     }
 
     public static boolean shouldExportWireframes() {

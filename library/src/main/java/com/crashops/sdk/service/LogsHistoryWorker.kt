@@ -154,7 +154,7 @@ class LogsHistoryWorker(appContext: Context, workerParams: WorkerParameters) : L
 
                         var didAllSucceeded = true
                         successes.forEach {
-                            didAllSucceeded = didAllSucceeded && it != null
+                            didAllSucceeded = didAllSucceeded && (it?.isNotEmpty() ?: false)
                         }
 
                         crashLogsHolder.release(didAllSucceeded)
@@ -169,19 +169,19 @@ class LogsHistoryWorker(appContext: Context, workerParams: WorkerParameters) : L
                         val holder = synchronizer.createHolder()
                         Communicator.instance.report(it) { result ->
                             SdkLogger.log(result)
-                            val logContent: String?
-                            if (result != null) {
-                                logContent = it.readText()
+                            val response = result as? Pair<*, *>
+
+                            val httpResponseCode = response?.first as? Int ?: 100
+
+                            if (httpResponseCode == 202 || (httpResponseCode in 400..499)) {
                                 try {
                                     it.delete()
                                 } catch (exception: java.lang.Exception) {
                                     SdkLogger.error(TAG, exception)
                                 }
-                            } else {
-                                logContent = null
                             }
 
-                            holder.release(logContent)
+                            holder.release((response?.second as? String) ?: "")
                         }
                     }
                 }
@@ -192,7 +192,7 @@ class LogsHistoryWorker(appContext: Context, workerParams: WorkerParameters) : L
                     val synchronizer = Synchronizer<String> { successes ->
                         var didAllSucceeded = true
                         successes.forEach {
-                            didAllSucceeded = didAllSucceeded && it != null
+                            didAllSucceeded = didAllSucceeded && (it?.isNotEmpty() ?: false)
                         }
 
                         errorLogsHolder.release(didAllSucceeded)
@@ -202,19 +202,19 @@ class LogsHistoryWorker(appContext: Context, workerParams: WorkerParameters) : L
                         val holder = synchronizer.createHolder()
                         Communicator.instance.report(it) { result ->
                             SdkLogger.log(result)
-                            val logContent: String?
-                            if (result != null) {
-                                logContent = it.readText()
+                            val response = result as? Pair<*, *>
+
+                            val httpResponseCode = response?.first as? Int ?: 100
+
+                            if (httpResponseCode == 202 || (httpResponseCode in 400..499)) {
                                 try {
                                     it.delete()
                                 } catch (exception: java.lang.Exception) {
                                     SdkLogger.error(TAG, exception)
                                 }
-                            } else {
-                                logContent = null
                             }
 
-                            holder.release(logContent)
+                            holder.release((response?.second as? String) ?: "")
                         }
                     }
                 }
