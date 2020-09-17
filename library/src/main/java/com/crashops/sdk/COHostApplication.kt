@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.os.Handler
 import android.os.HandlerThread
+import android.os.Looper
 import androidx.work.Configuration
 import com.crashops.sdk.data.Repository
 import com.crashops.sdk.service.LogsHistoryWorker
@@ -56,7 +57,7 @@ class COHostApplication(base: Context?) : ContextWrapper(base), Configuration.Pr
         appBackgroundThread.start()
         appBackgroundHandler = Handler(appBackgroundThread.looper)
 
-        mainThreadHandler = Handler()
+        mainThreadHandler = Handler(Looper.getMainLooper())
 
         applicationStateObserver = PrivateEventBus.createNewReceiver(applicationContext, object : PrivateEventBus.BroadcastReceiverListener {
             override fun onBroadcastReceived(intent: Intent, receiver: PrivateEventBus.Receiver) {

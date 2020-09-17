@@ -1,13 +1,14 @@
 package com.crashops.sdk.util;
 
 import android.os.Handler;
+import android.os.Looper;
 
 import java.util.ArrayList;
 
 /**
  * A helper class that syncs all callbacks into one callback.
  *
- * Created by roee on 18/01/2017, supervised and improved by Perry.
+ * Created by CrashOps on 01/01/2020.
  */
 public class Synchronizer<T> {
     public interface SynchronizerCallback<T> {
@@ -21,7 +22,7 @@ public class Synchronizer<T> {
     private final Handler handler;
 
     public Synchronizer(SynchronizerCallback<T> lastAction) {
-        handler = new Handler();
+        handler = new Handler(Looper.getMainLooper());
         futureTask = lastAction;
         allHoldersResults = new ArrayList<>();
         hasBeenCanceled = false;

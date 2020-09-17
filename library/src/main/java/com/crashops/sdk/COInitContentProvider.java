@@ -8,7 +8,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 /**
- * Created by perrchick on 18/10/2018.
+ * Created by CrashOps on 01/01/2020.
  */
 public class COInitContentProvider extends ContentProvider {
     @Override

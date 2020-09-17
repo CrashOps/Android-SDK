@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.collections.ArrayList
 
 /**
- * Created by perrchick on 15/01/2020.
+ * Created by CrashOps on 01/01/2020.
  */
 class CrashOpsErrorHandler private constructor() : Thread.UncaughtExceptionHandler {
     companion object {

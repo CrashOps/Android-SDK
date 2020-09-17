@@ -38,7 +38,7 @@ import kotlin.Unit;
 import kotlin.jvm.functions.Function1;
 
 /**
- * Created by perrchick on 18/10/2018.
+ * Created by CrashOps on 01/01/2020.
  */
 public class CrashOps {
     private static final String TAG = CrashOps.class.getSimpleName();
@@ -226,6 +226,8 @@ public class CrashOps {
     }
 
     public void onPreviousCrashLogsUpdated(@NonNull final List<String> previousCrashLogs) {
+        if (previousCrashLogs.isEmpty()) return;
+
         if (Configurations.isEnabled() && previousLogsListener != null) {
             CrashOpsController.sdkInstance.mainHandler.post(new Runnable() {
                 @Override
