@@ -8,7 +8,6 @@ import com.crashops.sdk.util.SdkLogger
 import com.crashops.sdk.util.Strings
 import com.crashops.sdk.util.Utils
 import org.json.JSONObject
-import java.io.File
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.util.concurrent.TimeUnit
@@ -34,6 +33,11 @@ class Communicator {
         private val TAG: String = Communicator::class.java.simpleName
 
         /**
+         * Server's endpoint that will receive all application startup pings.
+         */
+        const val PingUrl = "https://crashops.com/api/ping"
+
+        /**
          * Server's endpoint that will receive all logs.
          */
         const val LogsServerUrl = "https://crashops.com/api/reports"
@@ -48,10 +52,6 @@ class Communicator {
 
         fun removeCallbacks(key: Int) {
             instance.callbacks.remove(key)
-        }
-
-        enum class Responses {
-            NOT_FOUND
         }
     }
 
@@ -194,8 +194,19 @@ class Communicator {
     }
 
     @Throws(IOException::class)
-    fun report(file: File, callback: (Any?) -> Unit) {
-        apiCall(LogsServerUrl, file.readText(), this, object : Utils.Callback<Pair<Int, String?>?> {
+    fun report(jsonString: String, callback: (Any?) -> Unit) {
+        val serverUrl = LogsServerUrl
+        apiCall(serverUrl, jsonString, this, object : Utils.Callback<Pair<Int, String?>?> {
+            override fun onCallback(result: Pair<Int, String?>?) {
+                callback.invoke(result)
+            }
+        })
+    }
+
+    @Throws(IOException::class)
+    fun sendPresence(jsonString: String, callback: (Any?) -> Unit) {
+        val serverUrl = PingUrl
+        apiCall(serverUrl, jsonString, this, object : Utils.Callback<Pair<Int, String?>?> {
             override fun onCallback(result: Pair<Int, String?>?) {
                 callback.invoke(result)
             }

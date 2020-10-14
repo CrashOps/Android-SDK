@@ -1,20 +1,31 @@
 package com.crashops.sdk.logic
 
 import android.app.Activity
+import com.crashops.sdk.data.Repository
 import com.crashops.sdk.data.model.ActivityDetails
 
 class ActivityTracer: ActivityTraceable {
-    private val activitiesTrace: ArrayList<ActivityDetails> = arrayListOf()
+    private val tracers: HashMap<Activity,ActivityDetails> = hashMapOf()
 
-    override fun breadcrumbsReport(): List<ActivityDetails> {
-        return activitiesTrace.toList()
+    override fun addActivityToTrace(activity: Activity) {
+        val activityDetails = ActivityDetails(activity)
+        tracers[activity] = activityDetails
+        Repository.instance.persistBreadcrumb(activityDetails)
     }
 
-    fun addActivityToTrace(activity: Activity) {
-        activitiesTrace.add(ActivityDetails(activity))
+    override fun tracesReport(sessionId: String): List<ActivityDetails> {
+        return Repository.instance.traces(sessionId)
+    }
+
+    override fun stopTracing(activity: Activity) {
+        val activityDetails = tracers[activity]
+        activityDetails?.stopObserving(activity)
+        tracers.remove(activity)
     }
 }
 
 interface ActivityTraceable {
-    fun breadcrumbsReport(): List<ActivityDetails>
+    fun tracesReport(sessionId: String): List<ActivityDetails>
+    fun stopTracing(activity: Activity)
+    fun addActivityToTrace(activity: Activity)
 }

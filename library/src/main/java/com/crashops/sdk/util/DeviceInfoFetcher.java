@@ -61,12 +61,12 @@ public class DeviceInfoFetcher {
     info.put("tags", Build.TAGS);
     info.put("type", Build.TYPE);
     info.put("isPhysicalDevice", !isEmulator());
-    info.put("androidId", getAndroidId());
+    //info.put("deviceId", getAndroidId());
 
     info.put("screenSize", screenWidth + "x" + screenHeight);
     info.put("carrier", getCarrierName());
 
-    Reachability.NetworkStatus reachabilityStatus = Reachability.instance.getReachabilityStatus();
+    Reachability.NetworkStatus reachabilityStatus = Reachability.getReachabilityStatus(COHostApplication.sharedInstance());
     info.put("reachabilityStatus", reachabilityStatus.toString());
 
     int batteryLevel = getDeviceBatteryPercentageLevel();
@@ -129,12 +129,12 @@ public class DeviceInfoFetcher {
    * On Android 8.0 (API level 26) and higher versions of the platform,
    * a 64-bit number (expressed as a hexadecimal string),
    * unique to each combination of: app-signing key, user, and device.
-   * (From: https://developer.android.com/reference/android/provider/Settings.Secure?authuser=1#ANDROID_ID)
+   * (From: https://developer.android.com/reference/android/provider/Settings.Secure#ANDROID_ID)
    *
    * @return The android ID
    */
   @SuppressLint("HardwareIds")
-  static private String getAndroidId() {
+  static public String getAndroidId() {
     Context appContext = COHostApplication.sharedInstance();
     if (appContext != null) {
       ContentResolver contentResolver = appContext.getContentResolver();

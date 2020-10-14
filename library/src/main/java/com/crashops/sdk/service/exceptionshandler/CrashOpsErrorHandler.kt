@@ -171,15 +171,14 @@ class CrashOpsErrorHandler private constructor() : Thread.UncaughtExceptionHandl
                 .withString(Constants.Keys.Json.ERROR_TITLE, title)
                 .withInnerBundle(Constants.Keys.Json.ERROR_DETAILS, errorDetails)
 
-        val crashLog = LogGenerator.generateLog(Thread.currentThread(), errorThrowable, extra, time)
-        Repository.instance.storeErrorLog(crashLog)
+        val errorLog = LogGenerator.generateLog(Thread.currentThread(), errorThrowable, extra, time)
+        Repository.instance.storeErrorLog(errorLog)
         LogsHistoryWorker.runNow(COHostApplication.shared(), callback = object: Utils.Callback<Boolean?> {
             override fun onCallback(result: Boolean?) {
                 // did finish...
             }
         })
     }
-
 }
 
 private fun Bundle.withInnerBundle(key: String, bundleValue: Bundle): Bundle {
@@ -228,10 +227,6 @@ class LogGenerator {
         fun generateLog(originThread: Thread, throwable: Throwable, extra: Bundle? = null, time: Long? = null): String {
             val allStackTraces = Thread.getAllStackTraces().entries
 
-            val screenTraces = Repository.instance.tracer?.breadcrumbsReport()?.map {
-                it.toJson()
-            }
-
             val logJsonObject = JSONObject()
             
             logJsonObject.put(Constants.Keys.Json.ORIGIN, throwable.toJson())
@@ -271,14 +266,13 @@ class LogGenerator {
                 deviceInfo = DeviceInfoFetcher.getDeviceInfo()
             }
 
+            logJsonObject.put(Constants.Keys.Json.DEVICE_ID, Repository.instance.deviceId())
+            logJsonObject.put(Constants.Keys.Json.SDK_VERSION, CrashOps.sdkVersion)
             logJsonObject.put(Constants.Keys.Json.DEVICE_INFO, JSONObject(deviceInfo))
             logJsonObject.put(Constants.Keys.Json.METADATA, JSONObject(CrashOps.getInstance().appMetadata().toMap()))
             logJsonObject.put(Constants.Keys.Json.ORIGIN_THREAD, "${originThread.name} (${originThread.id})")
 
             logJsonObject.put(Constants.Keys.Json.DID_EXPORT_WIREFRAMES, Configurations.shouldExportWireframes())
-            screenTraces?.let {
-                logJsonObject.put(Constants.Keys.Json.SCREEN_TRACES, JSONArray(it))
-            }
 
             val currentThreadId = Thread.currentThread().id
             val stackTraces: ArrayList<JSONObject> = arrayListOf()
@@ -337,40 +331,6 @@ private fun Throwable.toJson() : JSONObject {
     }
 
     return throwableJson
-}
-
-private fun ActivityDetails.toJson(): JSONObject {
-    return JSONObject()
-            .put("name", name)
-            .put("package", packageName)
-            .put("timestamp", timestamp)
-            .put("views", viewDetails().toJson())
-}
-
-private fun ViewDetails.toJson(): JSONObject {
-    val viewDetailsJson = JSONObject()
-            .put("className", className)
-            .put("depth", depth)
-            .put("position", position.toJson())
-            .put("dimensions", dimensions.toJson())
-
-    if (!isLeaf) {
-        viewDetailsJson.put("children", JSONArray(children.map { it.toJson() }.toList()))
-    }
-
-    return viewDetailsJson
-}
-
-private fun Size.toJson(): JSONObject {
-    return JSONObject()
-            .put("width", width)
-            .put("height", height)
-}
-
-private fun Position.toJson(): JSONObject {
-    return JSONObject()
-            .put("x", x.toInt())
-            .put("y", y.toInt())
 }
 
 class ThrowableWithExtra: Throwable() {

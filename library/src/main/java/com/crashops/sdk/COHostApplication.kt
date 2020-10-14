@@ -162,6 +162,10 @@ class COHostApplication(base: Context?) : ContextWrapper(base), Configuration.Pr
     override fun onActivityResumed(activity: Activity) {
         activitiesListener?.onActivityResumed(activity)
     }
+
+    override fun onActivityDestroyed(activity: Activity) {
+        activitiesListener?.onActivityDestroyed(activity)
+    }
     //endregion
 
 }

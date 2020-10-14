@@ -10,9 +10,12 @@ import com.crashops.sdk.COHostApplication
 import com.crashops.sdk.communication.Communicator
 import com.crashops.sdk.configuration.Configurations
 import com.crashops.sdk.data.Repository
+import com.crashops.sdk.data.model.toJson
+import com.crashops.sdk.data.toJson
 import com.crashops.sdk.service.LogsHistoryWorker.Companion.TAG
 import com.crashops.sdk.util.*
 import com.google.common.util.concurrent.ListenableFuture
+import org.json.JSONArray
 import java.io.File
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -165,9 +168,29 @@ class LogsHistoryWorker(appContext: Context, workerParams: WorkerParameters) : L
                     }
 
                     crashLogFiles.forEach {
-
                         val holder = synchronizer.createHolder()
-                        Communicator.instance.report(it) { result ->
+
+                        val logJsonObject = it.readText().toJson() ?: run {
+                            holder.release()
+                            return@forEach
+                        }
+
+                        val sessionId = logJsonObject.optString(Constants.Keys.Json.SESSION_ID)
+
+                        if (sessionId.isEmpty()) {
+                            holder.release()
+                            return@forEach
+                        }
+
+                        val screenTraces = Repository.instance.tracer?.tracesReport(sessionId)?.map { activityDetails ->
+                            activityDetails.toJson()
+                        }
+
+                        screenTraces?.let { tracesList ->
+                            logJsonObject.put(Constants.Keys.Json.SCREEN_TRACES, JSONArray(tracesList))
+                        }
+
+                        Communicator.instance.report(logJsonObject.toString()) { result ->
                             SdkLogger.log(result)
                             val response = result as? Pair<*, *>
 
@@ -200,7 +223,28 @@ class LogsHistoryWorker(appContext: Context, workerParams: WorkerParameters) : L
 
                     errorLogFiles.forEach {
                         val holder = synchronizer.createHolder()
-                        Communicator.instance.report(it) { result ->
+
+                        val logJsonObject = it.readText().toJson() ?: run {
+                            holder.release()
+                            return@forEach
+                        }
+
+                        val sessionId = logJsonObject.optString(Constants.Keys.Json.SESSION_ID)
+
+                        if (sessionId.isEmpty()) {
+                            holder.release()
+                            return@forEach
+                        }
+
+                        val screenTraces = Repository.instance.tracer?.tracesReport(sessionId)?.map { activityDetails ->
+                            activityDetails.toJson()
+                        }
+
+                        screenTraces?.let { tracesList ->
+                            logJsonObject.put(Constants.Keys.Json.SCREEN_TRACES, JSONArray(tracesList))
+                        }
+
+                        Communicator.instance.report(logJsonObject.toString()) { result ->
                             SdkLogger.log(result)
                             val response = result as? Pair<*, *>
 

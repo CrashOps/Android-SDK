@@ -51,6 +51,7 @@ class AppLifecycleTracker(private var lifecycleListener: LifecycleListener?) : A
 
     override fun onActivityDestroyed(activity: Activity) {
         Communicator.removeCallbacks(activity)
+        lifecycleListener?.onActivityDestroyed(activity)
     }
     //endregion
 
@@ -74,4 +75,5 @@ class AppLifecycleTracker(private var lifecycleListener: LifecycleListener?) : A
 
 interface LifecycleListener {
     fun onActivityResumed(activity: Activity)
+    fun onActivityDestroyed(activity: Activity)
 }
