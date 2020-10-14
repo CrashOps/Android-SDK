@@ -31,6 +31,7 @@ class SdkLogger {
             error(reporter.javaClass.simpleName, logMessage.toString())
         }
 
+        @JvmStatic
         fun error(reporter: String, throwable: Throwable) {
             if (Utils.isReleaseVersion) return
             if (!Configurations.isEnabled()) return

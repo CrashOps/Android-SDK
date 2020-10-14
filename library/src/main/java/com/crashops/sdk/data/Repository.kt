@@ -8,26 +8,29 @@ import android.os.Build
 import android.os.Bundle
 import com.crashops.sdk.COHostApplication
 import com.crashops.sdk.CrashOps
-import com.crashops.sdk.logic.ActivityTracer
-import com.crashops.sdk.util.Constants
-import com.crashops.sdk.util.SdkLogger
-import com.crashops.sdk.util.Strings
-import com.crashops.sdk.util.Utils
+import com.crashops.sdk.data.model.ActivityDetails
+import com.crashops.sdk.data.model.toJson
+import com.crashops.sdk.logic.ActivityTraceable
+import com.crashops.sdk.util.*
+import org.json.JSONException
+import org.json.JSONObject
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.FileOutputStream
 import java.io.IOException
+import java.util.*
+import kotlin.collections.ArrayList
 
 class Repository {
 
-    var tracer: ActivityTracer? = null
+    var tracer: ActivityTraceable? = null
     internal val hostAppDetails = Bundle()
     private val filesHelper = FilesHelper()
 
-    private val logsFolder: File? by lazy {
+    private val sdkFolder: File? by lazy {
         filesHelper.filesDir?.let { folder ->
             val created: Boolean
-            val logsDir = File(folder.absolutePath + "/${Strings.SDK_IDENTIFIER}_logs/")
+            val logsDir = File(folder.absolutePath + "/${Strings.SDK_IDENTIFIER}/")
             created = if (!logsDir.exists() || !logsDir.isDirectory) {
                 logsDir.mkdirs()
             } else {
@@ -45,10 +48,31 @@ class Repository {
         }
     }
 
+    private val logsFolder: File? by lazy {
+        sdkFolder?.let { folder ->
+            val created: Boolean
+            val logsDir = File(folder.absolutePath, "logs")
+            created = if (!logsDir.exists() || !logsDir.isDirectory) {
+                logsDir.mkdirs()
+            } else {
+                true
+            }
+
+            if (created) {
+                logsDir
+            } else {
+                null
+            }
+        } ?: run {
+            SdkLogger.internalError(TAG, "Couldn't get to SDK's cache folder")
+            null
+        }
+    }
+
     private val crashLogsFolder: File? by lazy {
         logsFolder?.let {
             val created: Boolean
-            val crashLogsDir = File(it.absolutePath + "/crashes/")
+            val crashLogsDir = File(it.absolutePath, "crashes")
             created = if (!crashLogsDir.exists() || !crashLogsDir.isDirectory) {
                 crashLogsDir.mkdirs()
             } else {
@@ -66,10 +90,74 @@ class Repository {
         }
     }
 
+    public val screenshotsFolder: File? by lazy {
+        sdkFolder?.let { folder ->
+            val created: Boolean
+            val logsDir = File(folder,"screenshots")
+            created = if (!logsDir.exists() || !logsDir.isDirectory) {
+                logsDir.mkdirs()
+            } else {
+                true
+            }
+
+            if (created) {
+                logsDir
+            } else {
+                null
+            }
+        } ?: run {
+            SdkLogger.internalError(TAG, "Couldn't get to device's cache folder")
+            null
+        }
+
+    }
+
+    private val screenTracesFolder: File? by lazy {
+        sdkFolder?.let {
+            val created: Boolean
+            val tracesDir = File(it.absolutePath + "/traces/")
+            created = if (!tracesDir.exists() || !tracesDir.isDirectory) {
+                tracesDir.mkdirs()
+            } else {
+                true
+            }
+
+            if (created) {
+                tracesDir
+            } else {
+                null
+            }
+        } ?: run {
+            SdkLogger.internalError(TAG, "Couldn't get to device's cache folder")
+            null
+        }
+    }
+
+    private val currentSessionScreenTracesFolder: File? by lazy {
+        screenTracesFolder?.let {
+            val created: Boolean
+            val errorLogsDir = File(it.absolutePath, CrashOps.getInstance().sessionId)
+            created = if (!errorLogsDir.exists() || !errorLogsDir.isDirectory) {
+                errorLogsDir.mkdirs()
+            } else {
+                true
+            }
+
+            if (created) {
+                errorLogsDir
+            } else {
+                null
+            }
+        } ?: run {
+            SdkLogger.internalError(TAG, "Couldn't get to device's cache folder")
+            null
+        }
+    }
+
     private val errorLogsFolder: File? by lazy {
         logsFolder?.let {
             val created: Boolean
-            val errorLogsDir = File(it.absolutePath + "/errors/")
+            val errorLogsDir = File(it.absolutePath, "errors")
             created = if (!errorLogsDir.exists() || !errorLogsDir.isDirectory) {
                 errorLogsDir.mkdirs()
             } else {
@@ -121,7 +209,7 @@ class Repository {
         }
     }
 
-    fun storeDeviceId(id: String) {
+    private fun storeDeviceId(id: String) {
         writeStringToExternalFile(id, Constants.Keys.DeviceId)
     }
 
@@ -222,8 +310,12 @@ class Repository {
             ?.edit()?.remove(key)?.apply()
     }
 
-    fun deviceId(): String? {
-        return readExternalFileContent(Constants.Keys.DeviceId)
+    fun deviceId(): String {
+        return readExternalFileContent(Constants.Keys.DeviceId) ?: run {
+            val deviceId = DeviceInfoFetcher.getAndroidId()
+            storeDeviceId(deviceId)
+            deviceId
+        }
     }
 
     fun storeCrashLog(log: String, time: Long? = null): String? {
@@ -280,7 +372,7 @@ class Repository {
     }
 
     fun loadLogFileContent(filename: String): String? {
-        val logsFolder = logsFolder ?: return null
+        val logsFolder = sdkFolder ?: return null
         val file = File(logsFolder, filename)
 
         return file.readText()
@@ -288,7 +380,7 @@ class Repository {
 
     /// Removes all traces
     fun clearAllHistory(): Boolean {
-        return logsFolder?.let { sdkDir ->
+        return sdkFolder?.let { sdkDir ->
             return sdkDir.deleteRecursively()
         } ?: false
     }
@@ -329,18 +421,63 @@ class Repository {
         deleteExternalFile(Constants.Keys.DeviceId)
     }
 
-    fun appMetadata(): String {
-        return "<TODO>"
+    fun traces(sessionId: String): List<ActivityDetails> {
+        return screenTracesFolder?.let { folder ->
+            val tracesFolder = File(folder.absolutePath, sessionId)
+
+            val temp: List<ActivityDetails?>? = tracesFolder.listFiles()?.map {
+                val jsonString = it?.readText() ?: ""
+                ActivityDetails.from(jsonString)
+            }
+
+            temp?.filterNotNull()
+        } ?: arrayListOf()
+    }
+
+    /// This will replace the existing file if it already exists
+    fun persistBreadcrumb(activityDetails: ActivityDetails): Boolean {
+        val timestamp = activityDetails.timestamp
+        val filename = "$timestamp.log"
+
+        var didSave = false
+        currentSessionScreenTracesFolder?.let {
+            val file = File(it.absolutePath, filename)
+
+            try {
+                val logFileStream = FileOutputStream(file)
+                logFileStream.write(activityDetails.toJson().toString().toByteArray())
+                didSave = true
+            } catch (e: FileNotFoundException) {
+                SdkLogger.error(TAG, e)
+            } catch (e: IOException) {
+                SdkLogger.error(TAG, e)
+            }
+        }
+
+        return didSave
     }
 
     companion object {
         val FILES_PATH: String = ".CrashOps${File.separator}files"
-        private val TAG: String = Repository::class.java.simpleName
+        internal val TAG: String = Repository::class.java.simpleName
         @JvmStatic
         val instance: Repository = Repository()
 
         fun isPermittedForExternalStorage(activity: Activity): Boolean {
             return instance.filesHelper.isPermittedForExternalStorage(activity)
         }
+    }
+}
+
+private val CrashOps.instance: CrashOps get() {
+    return CrashOps.getInstance()
+}
+
+fun String.toJson(): JSONObject? {
+    return try {
+        JSONObject(this)
+    } catch (jsonException: JSONException) {
+        SdkLogger.error(Repository.TAG, jsonException)
+        null
     }
 }

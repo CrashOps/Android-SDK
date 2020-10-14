@@ -8,12 +8,14 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 
-import androidx.annotation.Nullable;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
+import com.crashops.sdk.communication.Communicator;
 import com.crashops.sdk.configuration.Configurations;
 import com.crashops.sdk.configuration.ConfigurationsProvider;
 import com.crashops.sdk.data.Repository;
+import com.crashops.sdk.logic.ActivityTraceable;
 import com.crashops.sdk.logic.ActivityTracer;
 import com.crashops.sdk.service.LogsHistoryWorker;
 import com.crashops.sdk.service.exceptionshandler.CrashOpsErrorHandler;
@@ -25,6 +27,10 @@ import com.crashops.sdk.util.SdkLogger;
 import com.crashops.sdk.util.Strings;
 import com.crashops.sdk.util.Utils;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -42,6 +48,7 @@ import kotlin.jvm.functions.Function1;
  */
 public class CrashOps {
     private static final String TAG = CrashOps.class.getSimpleName();
+    static public final String sdkVersion = "0.3.01"; // TODO Make this 'sdkVersion' programmatically assign (not hard coded)
     private Bundle hostAppMetadata;
 
     @Nullable
@@ -242,7 +249,7 @@ public class CrashOps {
     private enum CrashOpsController implements LifecycleListener {
         sdkInstance;
 
-        final private ActivityTracer activityTracer;
+        final private ActivityTraceable activityTracer;
 
         private boolean isCrashOpsEnabled = true;
         private static final String CO_THREAD_TAG = "CrashOps_Thread";
@@ -361,6 +368,11 @@ public class CrashOps {
         public void onActivityResumed(@NonNull Activity activity) {
             activityTracer.addActivityToTrace(activity);
         }
+
+        @Override
+        public void onActivityDestroyed(@NonNull Activity activity) {
+            activityTracer.stopTracing(activity);
+        }
         //endregion
     }
 
@@ -384,6 +396,33 @@ public class CrashOps {
         if (!LogsHistoryWorker.registerSelf(context)) {
             Utils.debugDialog("Failed to register job!");
         }
+
+        CrashOpsController.sdkInstance.bgThreadHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                JSONObject deviceInfo = new JSONObject(CrashOpsController.sdkInstance.deviceInfo);
+
+                try {
+                    JSONObject sessionDetails = new JSONObject()
+                            .put(Constants.Keys.Json.DEVICE_INFO, deviceInfo)
+                            .put(Constants.Keys.Json.SDK_VERSION, CrashOps.sdkVersion)
+                            .put(Constants.Keys.Json.SESSION_ID, sessionId)
+                            .put(Constants.Keys.Json.DEVICE_PLATFORM, Constants.Keys.Json.DEVICE_PLATFORM_ANDROID)
+                            .put(Constants.Keys.Json.TIMESTAMP, Utils.Companion.now(false)) // 1602590272000
+                            .put(Constants.Keys.Json.DEVICE_ID, Repository.getInstance().deviceId());
+                    Communicator.getInstance().sendPresence(sessionDetails.toString(), new Function1<Object, Unit>() {
+                        @Override
+                        public Unit invoke(Object o) {
+                            return null;
+                        }
+                    });
+                } catch (IOException e) {
+                    SdkLogger.error(TAG, e);
+                } catch (JSONException e) {
+                    SdkLogger.error(TAG, e);
+                }
+            }
+        });
 
         LogsHistoryWorker.runIfIdle(context, new Function1<Boolean, Unit>() {
             @Override
