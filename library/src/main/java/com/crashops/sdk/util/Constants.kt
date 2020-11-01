@@ -21,6 +21,7 @@ class Constants {
         const val DeviceDetails = "${Strings.SDK_NAME}_deviceDetails"
 
         const val HOST_APP_VERSION_NAME = "appVersion"
+        const val APPLICATION_BUILD_NUMBER = "appBuildNumber"
         const val HOST_APP_VERSION_CODE = "appVersionCode"
         const val HOST_APP_PACKAGE_NAME = "packageName"
 

@@ -4,6 +4,9 @@ import android.app.Activity;
 import android.app.Application;
 import android.app.Dialog;
 import android.content.Context;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -48,7 +51,7 @@ import kotlin.jvm.functions.Function1;
  */
 public class CrashOps {
     private static final String TAG = CrashOps.class.getSimpleName();
-    static public final String sdkVersion = "0.3.01"; // TODO Make this 'sdkVersion' programmatically assign (not hard coded)
+    static public final String sdkVersion = "0.3.02"; // TODO Make this 'sdkVersion' programmatically assign (not hard coded)
     private Bundle hostAppMetadata;
 
     @Nullable
@@ -410,6 +413,19 @@ public class CrashOps {
                             .put(Constants.Keys.Json.DEVICE_PLATFORM, Constants.Keys.Json.DEVICE_PLATFORM_ANDROID)
                             .put(Constants.Keys.Json.TIMESTAMP, Utils.Companion.now(false)) // 1602590272000
                             .put(Constants.Keys.Json.DEVICE_ID, Repository.getInstance().deviceId());
+
+                    PackageInfo info = COHostApplication.sharedInstance().getPackageManager().getPackageInfo(COHostApplication.sharedInstance().getPackageName(), 0);
+
+                    long appBuildNumber;
+                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                        appBuildNumber = info.versionCode;
+                    } else {
+                        appBuildNumber = info.getLongVersionCode();
+                    }
+
+                    sessionDetails.put(Constants.Keys.APPLICATION_BUILD_NUMBER, appBuildNumber);
+                    sessionDetails.put(Constants.Keys.HOST_APP_VERSION_NAME, info.versionName);
+
                     Communicator.getInstance().sendPresence(sessionDetails.toString(), new Function1<Object, Unit>() {
                         @Override
                         public Unit invoke(Object o) {
@@ -419,6 +435,8 @@ public class CrashOps {
                 } catch (IOException e) {
                     SdkLogger.error(TAG, e);
                 } catch (JSONException e) {
+                    SdkLogger.error(TAG, e);
+                } catch (PackageManager.NameNotFoundException e) {
                     SdkLogger.error(TAG, e);
                 }
             }
@@ -448,5 +466,4 @@ public class CrashOps {
         copy.putAll(Optionals.safelyUnwrap(CrashOpsController.sdkInstance.deviceInfo, new HashMap<String, Object>()));
         return copy;
     }
-
 }
